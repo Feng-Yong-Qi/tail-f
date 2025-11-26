@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tail-f Console</title>
+    <link rel="icon" type="image/svg+xml" href="/static/log.svg">
+    
+    <!-- Local Element Plus CSS -->
+    <link rel="stylesheet" href="/static/lib/css/element-plus.css" />
+    <link rel="stylesheet" href="/static/lib/css/element-plus-dark.css">
+
+    <!-- Local Vue & Element Plus JS -->
+    <script src="/static/lib/js/vue.global.prod.js"></script>
+    <script src="/static/lib/js/element-plus.js"></script>
+    <script src="/static/lib/js/element-plus-icons.js"></script>
+
+    <style>
+        /* ==================== Apple Design System Variables ==================== */
+        :root {
+            /* Apple Dark Mode Color Palette */
+            --apple-bg-base: #1C1C1E;
+            --apple-bg-panel: rgba(28, 28, 30, 0.85);
+            --apple-bg-glass: rgba(44, 44, 46, 0.55);
+            --apple-bg-elevated: rgba(58, 58, 60, 0.7);
+            
+            --apple-text-primary: #F2F2F7;
+            --apple-text-secondary: #A2A2A7;
+            --apple-text-tertiary: #6E6E73;
+            --apple-text-bright: #FFFFFF;
+            
+            --apple-separator: rgba(84, 84, 88, 0.65);
+            --apple-separator-opaque: #38383A;
+            
+            /* Semantic Colors (Apple HIG) */
+            --apple-green: #32D74B;
+            --apple-yellow: #FFD60A;
+            --apple-red: #FF453A;
+            --apple-blue: #0A84FF;
+            --apple-cyan: #64D2FF;
+            --apple-purple: #BF5AF2;
+            
+            /* Shadows */
+            --apple-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+            --apple-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.2);
+            --apple-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.25);
+            
+            /* Radius */
+            --apple-radius-sm: 6px;
+            --apple-radius-md: 10px;
+            --apple-radius-lg: 12px;
+            
+            /* Blur */
+            --apple-blur: blur(18px);
+        }
+
+        /* ==================== Reset & Base ==================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            background-color: var(--apple-bg-base);
+            color: var(--apple-text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ==================== Layout Utilities ==================== */
+        .h-full { height: 100%; }
+        .w-full { width: 100%; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .flex-1 { flex: 1; }
+        .flex-shrink-0 { flex-shrink: 0; }
+        .items-center { align-items: center; }
+        .justify-center { justify-content: center; }
+        .justify-between { justify-content: space-between; }
+        .justify-end { justify-content: flex-end; }
+        .overflow-hidden { overflow: hidden; }
+        .overflow-y-auto { overflow-y: auto; }
+        .relative { position: relative; }
+        .select-none { user-select: none; }
+        .gap-2 { gap: 8px; }
+        .gap-3 { gap: 12px; }
+        .space-x-3 > * + * { margin-left: 12px; }
+        
+        /* Spacing */
+        .px-4 { padding-left: 16px; padding-right: 16px; }
+        .px-5 { padding-left: 20px; padding-right: 20px; }
+        .py-3 { padding-top: 12px; padding-bottom: 12px; }
+        .py-4 { padding-top: 16px; padding-right: 16px; }
+        .mr-3 { margin-right: 12px; }
+        .mb-4 { margin-bottom: 16px; }
+        
+        /* Text */
+        .text-xs { font-size: 11px; }
+        .text-sm { font-size: 13px; }
+        .text-base { font-size: 14px; }
+        .font-medium { font-weight: 500; }
+        .font-semibold { font-weight: 600; }
+        .truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tracking-tight { letter-spacing: -0.01em; }
+
+        /* ==================== Sidebar (Glass Panel) ==================== */
+        .sidebar {
+            background: var(--apple-bg-glass);
+            backdrop-filter: var(--apple-blur);
+            -webkit-backdrop-filter: var(--apple-blur);
+            border-right: 1px solid var(--apple-separator);
+            box-shadow: var(--apple-shadow-sm);
+            position: relative;
+            min-width: 180px;
+            max-width: 500px;
+        }
+
+        /* ==================== Resizer Handle ==================== */
+        .resizer {
+            position: absolute;
+            top: 0;
+            right: -4px;
+            bottom: 0;
+            width: 8px;
+            cursor: col-resize;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .sidebar:hover .resizer {
+            opacity: 1;
+        }
+
+        .resizer::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 4px;
+            bottom: 0;
+            width: 1px;
+            background: transparent;
+            transition: background 0.2s;
+        }
+
+        .resizer:hover::after, .resizer.active::after {
+            background: var(--apple-blue);
+            box-shadow: 0 0 4px var(--apple-blue);
+        }
+
+        .sidebar-header {
+            height: 52px;
+            border-bottom: 1px solid var(--apple-separator);
+            padding: 0 16px;
+            display: flex;
+            align-items: center;
+        }
+
+        .sidebar-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--apple-text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        /* ==================== Tree Customization ==================== */
+        .el-tree {
+            background: transparent !important;
+            color: var(--apple-text-primary);
+        }
+
+        .el-tree-node__content {
+            height: 28px;
+            margin: 2px 8px;
+            border-radius: var(--apple-radius-sm);
+            transition: background-color 0.15s ease;
+        }
+
+        .el-tree-node__content:hover {
+            background-color: rgba(255, 255, 255, 0.06) !important;
+        }
+
+        .el-tree-node.is-current > .el-tree-node__content {
+            background-color: var(--apple-blue) !important;
+            color: white !important;
+            font-weight: 500;
+        }
+
+        .el-tree-node__expand-icon {
+            color: var(--apple-text-tertiary);
+            font-size: 12px;
+        }
+
+        .el-tree-node__expand-icon.is-leaf {
+            color: transparent;
+        }
+
+        /* ==================== Toolbar (Glass Panel) ==================== */
+        .toolbar {
+            height: 52px;
+            background: var(--apple-bg-glass);
+            backdrop-filter: var(--apple-blur);
+            -webkit-backdrop-filter: var(--apple-blur);
+            border-bottom: 1px solid var(--apple-separator);
+            box-shadow: var(--apple-shadow-sm);
+            padding: 0 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 10;
+        }
+
+        /* ==================== Toolbar Buttons ==================== */
+        .toolbar-btn {
+            background: transparent !important;
+            border: none !important;
+            color: var(--apple-text-secondary) !important;
+            width: 28px;
+            height: 28px;
+            padding: 0 !important;
+            border-radius: var(--apple-radius-sm) !important;
+            transition: all 0.15s ease !important;
+        }
+
+        .toolbar-btn:hover {
+            background: rgba(255, 255, 255, 0.08) !important;
+            color: var(--apple-text-primary) !important;
+        }
+
+        .toolbar-btn:active {
+            background: rgba(255, 255, 255, 0.04) !important;
+            transform: scale(0.95);
+        }
+
+        .toolbar-btn.is-active {
+            background: var(--apple-blue) !important;
+            color: white !important;
+        }
+
+        /* Font Size Control */
+        .font-control {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: var(--apple-radius-sm);
+            padding: 2px;
+        }
+
+        .font-control button {
+            width: 32px;
+            height: 24px;
+            background: transparent;
+            border: none;
+            color: var(--apple-text-secondary);
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.15s ease;
+        }
+
+        .font-control button:hover {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--apple-text-primary);
+        }
+
+        .font-control .divider {
+            width: 1px;
+            height: 14px;
+            background: var(--apple-separator);
+        }
+
+        /* ==================== Search Input ==================== */
+        .search-input .el-input__wrapper {
+            background: rgba(0, 0, 0, 0.15) !important;
+            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            box-shadow: none !important;
+            border-radius: var(--apple-radius-sm) !important;
+            height: 28px !important;
+            padding: 0 10px !important;
+        }
+
+        .search-input .el-input__wrapper:hover {
+            background: rgba(0, 0, 0, 0.2) !important;
+            border-color: rgba(255, 255, 255, 0.12) !important;
+        }
+
+        .search-input .el-input__wrapper.is-focus {
+            background: rgba(0, 0, 0, 0.25) !important;
+            border-color: var(--apple-blue) !important;
+            box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15) !important;
+        }
+
+        .search-input .el-input__inner {
+            color: var(--apple-text-primary) !important;
+            font-size: 13px !important;
+            height: 28px !important;
+        }
+
+        .search-input .el-input__inner::placeholder {
+            color: var(--apple-text-tertiary);
+        }
+
+        /* ==================== Log Container ==================== */
+        .log-container {
+            background: var(--apple-bg-panel);
+            font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+            overflow-y: auto;
+            scroll-behavior: auto !important;
+        }
+
+        .log-line {
+            display: flex;
+            align-items: flex-start;
+            padding: 2px 20px;
+            line-height: 1.4;
+            min-height: 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+        }
+
+        .log-line:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        .log-line-num {
+            width: 48px;
+            text-align: right;
+            margin-right: 16px;
+            color: var(--apple-text-tertiary);
+            font-size: 0.85em; /* 使用相对单位，跟随父容器 fontSize */
+            user-select: none;
+            flex-shrink: 0;
+            padding-top: 0px;
+        }
+
+        .log-content {
+            flex: 1;
+            white-space: pre-wrap;
+            word-break: break-word;
+            color: #E2E2E6; /* 提升主文本亮度，接近白色 */
+            /* font-size: 13px; */ /* 移除硬编码，使用父容器的动态 fontSize */
+        }
+
+        /* Log Level Colors (Apple Semantic) */
+        .log-info { 
+            color: var(--apple-green);
+            font-weight: 500;
+        }
+        .log-warn { 
+            color: var(--apple-yellow);
+            font-weight: 500;
+        }
+        .log-error { 
+            color: var(--apple-red);
+            font-weight: 600;
+        }
+        .log-debug { 
+            color: var(--apple-cyan);
+            font-weight: 500;
+        }
+
+        /* Fine-grained log syntax highlighting */
+        .log-timestamp {
+            color: #D1D1D6; /* 时间戳保持柔和但可读 */
+        }
+
+        .log-meta {
+            color: #C5C5C9; /* 元数据稍暗 */
+        }
+
+        .log-method {
+            color: #70D7FF; /* HTTP 方法用更亮的青色 */
+            font-weight: 600;
+        }
+
+        .log-ip {
+            color: #D0BCFF; /* IP 地址用更亮的紫色，更醒目 */
+            font-weight: 500;
+        }
+
+        .log-status-2xx {
+            color: #32D74B; /* 2xx 保持绿色 */
+            font-weight: 600;
+        }
+
+        .log-status-3xx {
+            color: #64D2FF; /* 3xx 用亮青色 */
+            font-weight: 600;
+        }
+
+        .log-status-4xx {
+            color: #FFD60A; /* 4xx 保持黄色 */
+            font-weight: 600;
+        }
+
+        .log-status-5xx {
+            color: #FF453A; /* 5xx 保持红色 */
+            font-weight: 700;
+        }
+
+        /* Search Highlight */
+        .highlight {
+            background: rgba(255, 214, 10, 0.25);
+            color: var(--apple-text-bright);
+            border-radius: 3px;
+            padding: 0 2px;
+        }
+
+        /* ==================== Scrollbar (macOS Style) ==================== */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 6px;
+            border: 3px solid transparent;
+            background-clip: content-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+            background-clip: content-box;
+        }
+
+        /* ==================== Empty State ==================== */
+        .empty-state {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--apple-text-tertiary);
+        }
+
+        .empty-state svg {
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+
+        .empty-state span {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* ==================== Status Footer ==================== */
+        .status-footer {
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-top: 1px solid var(--apple-separator);
+            font-size: 10px;
+            color: var(--apple-text-tertiary);
+            letter-spacing: 0.02em;
+        }
+
+        /* ==================== Tooltip Override ==================== */
+        .el-tooltip__popper {
+            background: rgba(44, 44, 46, 0.95) !important;
+            backdrop-filter: blur(18px);
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: var(--apple-shadow-md) !important;
+            border-radius: var(--apple-radius-sm) !important;
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+        }
+
+        .el-tooltip__popper .el-popper__arrow::before {
+            background: rgba(44, 44, 46, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        /* ==================== Custom Utilities ==================== */
+        .w-240 { width: 240px; }
+        .h-52 { height: 52px; }
+        .h-28 { height: 28px; }
+        .w-28 { width: 28px; }
+        .w-5 { width: 20px; }
+        .h-5 { height: 20px; }
+        .min-w-0 { min-width: 0; }
+    </style>
+</head>
+<body>
+    <div id="app" class="h-full flex flex-col">
+        <div class="flex-1 flex overflow-hidden">
+            
+            <!-- Sidebar -->
+            <aside class="sidebar flex flex-col flex-shrink-0 select-none" :style="{ width: sidebarWidth + 'px' }">
+                <div class="sidebar-header">
+                    <img src="/static/log.svg" class="w-5 h-5 mr-3" style="opacity: 0.85;">
+                    <span class="sidebar-title">Console</span>
+                </div>
+                
+                <div class="flex-1 overflow-y-auto py-3">
+                    <el-tree
+                        :data="fileTree"
+                        :props="defaultProps"
+                        highlight-current
+                        @node-click="handleNodeClick"
+                        empty-text="暂无日志文件"
+                    >
+                        <template #default="{ node, data }">
+                            <div class="flex items-center gap-2 w-full overflow-hidden">
+                                <!-- 远程服务器图标 -->
+                                <el-icon v-if="data.source === 'remote' && data.type === 'file'" :size="13" style="color: var(--apple-sky-blue)">
+                                    <Document />
+                                </el-icon>
+                                <!-- 本地文件图标 -->
+                                <el-icon v-else-if="data.type === 'file' && data.exists" :size="13" style="color: var(--apple-text-secondary)">
+                                    <Document />
+                                </el-icon>
+                                <!-- 文件不存在警告 -->
+                                <el-icon v-else-if="data.type === 'file' && !data.exists" :size="13" style="color: var(--apple-red)">
+                                    <Warning />
+                                </el-icon>
+                                <!-- 目录图标 -->
+                                <el-icon v-else :size="13" style="color: var(--apple-text-secondary)">
+                                    <Folder />
+                                </el-icon>
+                                <el-tooltip :content="node.label" placement="right" :show-after="600" effect="dark">
+                                    <span class="truncate text-sm block flex-1">{{ node.label }}</span>
+                                </el-tooltip>
+                            </div>
+                        </template>
+                    </el-tree>
+                </div>
+                
+                <div class="status-footer">
+                    {{ connectionStatusText }}
+                </div>
+
+                <!-- Resizer Handle -->
+                <div class="resizer" @mousedown="startResize" :class="{ active: isResizing }"></div>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-1 flex flex-col min-w-0 relative">
+                
+                <!-- Toolbar -->
+                <header class="toolbar">
+                    <div class="flex items-center gap-3 flex-1">
+                        <span v-if="currentFile" class="text-sm font-medium truncate flex items-center gap-2" style="color: var(--apple-text-primary)">
+                            <el-icon :size="14"><Document /></el-icon>
+                            {{ currentFile.name }}
+                        </span>
+                        <span v-else class="text-sm" style="color: var(--apple-text-tertiary)">
+                            未选择文件
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-center flex-1">
+                        <el-input
+                            v-model="searchQuery"
+                            class="search-input"
+                            style="width: 280px"
+                            placeholder="过滤日志..."
+                            :prefix-icon="Search"
+                            clearable
+                        />
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3 flex-1">
+                        <div class="font-control">
+                            <button @click="fontSize = Math.max(10, fontSize - 1)" title="缩小字体">A−</button>
+                            <div class="divider"></div>
+                            <button @click="fontSize = Math.min(20, fontSize + 1)" title="放大字体">A+</button>
+                        </div>
+
+                        <el-tooltip content="自动滚动" placement="bottom" :show-after="500">
+                            <el-button 
+                                class="toolbar-btn" 
+                                :class="{ 'is-active': autoScroll }"
+                                @click="toggleAutoScroll"
+                                circle
+                            >
+                                <el-icon><Bottom /></el-icon>
+                            </el-button>
+                        </el-tooltip>
+
+                        <el-tooltip content="清空日志" placement="bottom" :show-after="500">
+                            <el-button class="toolbar-btn" @click="clearLog" circle>
+                                <el-icon><Delete /></el-icon>
+                            </el-button>
+                        </el-tooltip>
+                    </div>
+                </header>
+
+                <!-- Log Viewer with Virtual Scrolling -->
+                <div class="flex-1 overflow-hidden relative log-container" ref="logContainer" :style="{ fontSize: fontSize + 'px' }" @scroll="handleScroll">
+                    <div v-if="logs.length === 0" class="empty-state">
+                        <el-icon :size="56"><Monitor /></el-icon>
+                        <span>选择日志文件开始查看</span>
+                    </div>
+
+                    <div v-else>
+                        <!-- 上方占位 -->
+                        <div :style="{ height: startOffset + 'px' }"></div>
+                        
+                        <!-- 可见日志 -->
+                        <div 
+                            v-for="(item, idx) in visibleLogs" 
+                            :key="item.index" 
+                            class="log-line"
+                        >
+                            <div class="log-line-num">{{ item.index + 1 }}</div>
+                            <div class="log-content" v-html="item.highlighted"></div>
+                        </div>
+                        
+                        <!-- 下方占位 -->
+                        <div :style="{ height: endOffset + 'px' }"></div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted, computed, watch } = Vue;
+        const { Search, Document, Delete, Bottom, Monitor, Warning, Folder } = ElementPlusIconsVue;
+
+        const app = createApp({
+            setup() {
+                const files = ref([]);
+                const currentFile = ref(null);
+                const logs = ref([]); 
+                const eventSource = ref(null);
+                const autoScroll = ref(true);
+                const searchQuery = ref("");
+                const fontSize = ref(13);
+                const connectionStatus = ref('connected');
+                
+                const logContainer = ref(null);
+                const scrollAnchor = ref(null);
+                
+                // Sidebar Resizing
+                const sidebarWidth = ref(parseInt(localStorage.getItem('sidebarWidth') || '240'));
+                const isResizing = ref(false);
+                
+                // Virtual Scrolling
+                const scrollTop = ref(0);
+                const lineHeight = 30; // 每行平均高度估计（px），考虑换行情况
+                const overscan = 20; // 额外渲染的行数（上下各20行，补偿高度估计误差）
+                
+                // Highlight Cache
+                const highlightCache = new Map();
+                
+                const startResize = (e) => {
+                    isResizing.value = true;
+                    document.addEventListener('mousemove', handleResize);
+                    document.addEventListener('mouseup', stopResize);
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none';
+                };
+                
+                const handleResize = (e) => {
+                    if (!isResizing.value) return;
+                    const newWidth = Math.min(Math.max(e.clientX, 180), 500);
+                    sidebarWidth.value = newWidth;
+                };
+                
+                const stopResize = () => {
+                    isResizing.value = false;
+                    document.removeEventListener('mousemove', handleResize);
+                    document.removeEventListener('mouseup', stopResize);
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    localStorage.setItem('sidebarWidth', sidebarWidth.value);
+                };
+
+                const defaultProps = {
+                    children: 'children',
+                    label: 'label',  // 使用 label 字段作为显示名称
+                };
+
+                const fileTree = computed(() => files.value);
+
+                const connectionStatusText = computed(() => {
+                    switch(connectionStatus.value) {
+                        case 'connected': return '● 已连接';
+                        case 'connecting': return '○ 连接中...';
+                        case 'disconnected': return '⚠ 连接断开';
+                        default: return '';
+                    }
+                });
+
+                const fetchFiles = async () => {
+                    try {
+                        const res = await fetch('/api/files');
+                        files.value = await res.json();
+                    } catch (e) {
+                        console.error("Failed to load files", e);
+                    }
+                };
+
+                const handleNodeClick = (data) => {
+                    // 只处理文件节点，忽略目录节点
+                    if (data.type !== 'file') return;
+                    if (!data.exists && data.source !== 'remote') return;  // 远程文件假设存在
+                    if (currentFile.value?.name === data.name) return;
+                    
+                    if (eventSource.value) eventSource.value.close();
+                    logs.value = [];
+                    highlightCache.clear(); // 清理缓存
+                    scrollTop.value = 0;
+                    currentFile.value = data;
+                    startStream(data.name);
+                };
+
+                // Buffer for batched updates
+                const logBuffer = [];
+                let batchTimer = null;
+
+                const flushBuffer = () => {
+                    if (logBuffer.length === 0) return;
+                    
+                    const newLogs = logBuffer.splice(0, logBuffer.length);
+                    logs.value.push(...newLogs);
+                    
+                    // 增加到20000行限制（虚拟滚动可以处理更多）
+                    if (logs.value.length > 20000) {
+                        const removed = logs.value.length - 20000;
+                        logs.value.splice(0, removed);
+                        // 清理对应的缓存
+                        highlightCache.clear();
+                    }
+                    
+                    if (autoScroll.value) {
+                        scrollToBottom();
+                    }
+                };
+
+                const startStream = (fileName) => {
+                    connectionStatus.value = 'connecting';
+                    const url = `/api/logs/stream?file=${encodeURIComponent(fileName)}`;
+                    eventSource.value = new EventSource(url);
+
+                    eventSource.value.onopen = () => connectionStatus.value = 'connected';
+                    eventSource.value.onerror = () => {
+                         if (eventSource.value.readyState === EventSource.CLOSED) connectionStatus.value = 'disconnected';
+                    };
+
+                    eventSource.value.onmessage = (event) => {
+                        try {
+                            const payload = JSON.parse(event.data);
+                            if (payload.data) {
+                                logBuffer.push(payload.data);
+                            }
+                        } catch (e) {
+                            logBuffer.push(event.data);
+                        }
+                        
+                        if (!batchTimer) {
+                            batchTimer = setTimeout(() => {
+                                flushBuffer();
+                                batchTimer = null;
+                            }, 100);
+                        }
+                    };
+                };
+
+                const scrollToBottom = () => {
+                    if (logContainer.value) {
+                        requestAnimationFrame(() => {
+                            logContainer.value.scrollTop = logContainer.value.scrollHeight;
+                        });
+                    }
+                };
+
+                const toggleAutoScroll = () => {
+                    autoScroll.value = !autoScroll.value;
+                    if (autoScroll.value) scrollToBottom();
+                };
+
+                const clearLog = async () => {
+                    if (!currentFile.value) return;
+                    try {
+                        await fetch('/api/logs/clear', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({ file: currentFile.value.name })
+                        });
+                        logs.value = [];
+                        highlightCache.clear(); // 清理缓存
+                        scrollTop.value = 0;
+                    } catch (e) {
+                        ElementPlus.ElMessage.error('清空日志失败');
+                    }
+                };
+
+                // 虚拟滚动：计算可见区域和占位高度
+                const startOffset = ref(0);
+                const endOffset = ref(0);
+                
+                const visibleLogs = computed(() => {
+                    if (!logContainer.value) return [];
+                    
+                    const containerHeight = logContainer.value.clientHeight || 600;
+                    const startIndex = Math.max(0, Math.floor(scrollTop.value / lineHeight) - overscan);
+                    const endIndex = Math.min(
+                        filteredLogs.value.length,
+                        Math.ceil((scrollTop.value + containerHeight) / lineHeight) + overscan
+                    );
+                    
+                    // 计算占位高度
+                    startOffset.value = startIndex * lineHeight;
+                    endOffset.value = (filteredLogs.value.length - endIndex) * lineHeight;
+                    
+                    const visible = [];
+                    for (let i = startIndex; i < endIndex; i++) {
+                        visible.push({
+                            index: i,
+                            line: filteredLogs.value[i],
+                            highlighted: highlightLine(filteredLogs.value[i], i)
+                        });
+                    }
+                    
+                    return visible;
+                });
+
+                // 处理滚动事件
+                const handleScroll = (event) => {
+                    scrollTop.value = event.target.scrollTop;
+                    
+                    // 如果用户手动滚动，检查是否在底部
+                    const container = event.target;
+                    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+                    
+                    // 如果不在底部，自动禁用自动滚动
+                    if (!isAtBottom && autoScroll.value) {
+                        autoScroll.value = false;
+                    }
+                };
+
+                const getLineClass = (line) => {
+                    // 不再需要返回类名，因为我们在 highlightLine 中处理所有高亮
+                    return '';
+                };
+
+                // 防抖搜索
+                let searchDebounceTimer = null;
+                const debouncedSearchQuery = ref("");
+                const updateSearch = (value) => {
+                    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+                    searchDebounceTimer = setTimeout(() => {
+                        debouncedSearchQuery.value = value;
+                    }, 150);
+                };
+                
+                // Watch searchQuery and trigger debounced update
+                watch(searchQuery, (newVal) => {
+                    updateSearch(newVal);
+                });
+
+                const filteredLogs = computed(() => {
+                    if (!debouncedSearchQuery.value) return logs.value;
+                    const lowerQuery = debouncedSearchQuery.value.toLowerCase();
+                    return logs.value.filter(line => line.toLowerCase().includes(lowerQuery));
+                });
+
+                // 优化的高亮函数 - 合并正则表达式，使用缓存
+                const highlightLine = (line, lineIndex) => {
+                    // 生成缓存键（包含搜索词）
+                    const cacheKey = `${lineIndex}-${debouncedSearchQuery.value}`;
+                    
+                    // 检查缓存
+                    if (highlightCache.has(cacheKey)) {
+                        return highlightCache.get(cacheKey);
+                    }
+                    
+                    // HTML 转义
+                    let safe = line
+                        .replace(/&/g, "&amp;")
+                        .replace(/</g, "&lt;")
+                        .replace(/>/g, "&gt;");
+                    
+                    // 合并所有语法高亮规则到一个正则（性能优化）
+                    safe = safe.replace(
+                        /(\b(?:INFO|WARN(?:ING)?|ERROR|DEBUG)\b)|(\b(?:GET|POST|PUT|DELETE|PATCH|HEAD|OPTIONS)\b)|(\b[2-5]\d{2}\b)|(\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b)|(\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?)|(\[\d{2}\/\w{3}\/\d{4}:\d{2}:\d{2}:\d{2}\s[+-]\d{4}\])/g,
+                        (match, logLevel, httpMethod, statusCode, ip, timestamp1, timestamp2) => {
+                            if (logLevel) {
+                                const cls = logLevel === 'INFO' ? 'log-info' : 
+                                           logLevel.startsWith('WARN') ? 'log-warn' :
+                                           logLevel === 'ERROR' ? 'log-error' : 'log-debug';
+                                return `<span class="${cls}">${match}</span>`;
+                            }
+                            if (httpMethod) return `<span class="log-method">${match}</span>`;
+                            if (statusCode) {
+                                const code = parseInt(match);
+                                const cls = code >= 200 && code < 300 ? 'log-status-2xx' :
+                                           code >= 300 && code < 400 ? 'log-status-3xx' :
+                                           code >= 400 && code < 500 ? 'log-status-4xx' : 'log-status-5xx';
+                                return `<span class="${cls}">${match}</span>`;
+                            }
+                            if (ip) return `<span class="log-ip">${match}</span>`;
+                            if (timestamp1 || timestamp2) return `<span class="log-timestamp">${match}</span>`;
+                            return match;
+                        }
+                    );
+                    
+                    // 搜索关键字高亮（最后处理）
+                    if (debouncedSearchQuery.value) {
+                        try {
+                            const escapedQuery = debouncedSearchQuery.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                            const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                            safe = safe.replace(regex, '<span class="highlight">$1</span>');
+                        } catch (e) {
+                            // 忽略正则错误
+                        }
+                    }
+                    
+                    // 缓存结果（限制缓存大小）
+                    if (highlightCache.size > 1000) {
+                        const firstKey = highlightCache.keys().next().value;
+                        highlightCache.delete(firstKey);
+                    }
+                    highlightCache.set(cacheKey, safe);
+                    
+                    return safe;
+                };
+
+                onMounted(() => {
+                    fetchFiles();
+                });
+
+                return {
+                    files,
+                    fileTree,
+                    currentFile,
+                    defaultProps,
+                    logs,
+                    filteredLogs,
+                    autoScroll,
+                    searchQuery,
+                    fontSize,
+                    connectionStatus,
+                    connectionStatusText,
+                    logContainer,
+                    sidebarWidth,
+                    isResizing,
+                    handleNodeClick,
+                    toggleAutoScroll,
+                    clearLog,
+                    getLineClass,
+                    highlightLine,
+                    startResize,
+                    // Virtual Scrolling
+                    visibleLogs,
+                    startOffset,
+                    endOffset,
+                    handleScroll,
+                    Search, Document, Delete, Bottom, Monitor, Warning, Folder
+                };
+            }
+        });
+
+        for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
+            app.component(key, component)
+        }
+
+        app.use(ElementPlus);
+        app.mount('#app');
+    </script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+server:
+  host: "0.0.0.0"
+  port: 8000
+
+# ==================== 本地日志配置 ====================
+# 配置日志文件列表
+# 支持两种方式：
+# 1. 单个文件：直接指定 path
+# 2. 扫描目录：指定 scan_dir，会递归扫描该目录下所有 .log 文件
+
+# 指定单个文件示例（可选）
+log_files:
+  - name: "nginx access log"
+    path: "/usr/local/nginx/logs/access.log"
+    encoding: "utf-8"
+
+# 扫描目录示例（可选）
+log_directories:
+  - name: "系统日志"
+    scan_dir: "/var/log"
+    pattern: "*.log"
+    recursive: true
+    encoding: "utf-8"
+
+# ==================== 远程服务器配置 ====================
+# 配置远程服务器的日志访问
+# 安全要求：
+# 1. 建议使用 SSH 密钥认证（auth_method: key）
+# 2. 必须配置 allowed_paths 白名单
+# 3. 远程服务器应创建专用的只读账户
+# 4. SSH 密钥文件权限应设置为 600
+
+# 示例配置 - 根据实际情况修改
+# remote_servers:
+# - name: "生产服务器"
+#   host: "192.168.1.100"
+#   port: 22
+#   user: "logviewer"
+#   auth_method: "key"
+#   key_path: "/root/.ssh/id_ed25519"
+#   
+#   # 安全配置（必须）
+#   allowed_paths:
+#     - "/var/log"
+#   max_file_size: 104857600  # 100MB
+#   
+#   # 日志配置
+#   logs:
+#     - name: "应用日志"
+#       path: "/var/log/app.log"
+#       type: "file"
